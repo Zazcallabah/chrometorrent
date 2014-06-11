@@ -13,6 +13,10 @@ function refresh_log() {
 	}
 }
 
+function reset_token() {
+	localStorage["reset"] = "true";
+}
+
 function clear_log() {
 	document.getElementById("log").innerHTML = "";
 	localStorage["logdata"] = "";
@@ -53,5 +57,6 @@ document.addEventListener('DOMContentLoaded', function () {
   document.getElementById('save_options').addEventListener('click', save_options);
   document.getElementById('refresh_log').addEventListener('click', refresh_log);
   document.getElementById('clear_log').addEventListener('click', clear_log);
+  document.getElementById('reset_token').addEventListener('click', reset_token);
   restore_options();
 });

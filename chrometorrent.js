@@ -21,7 +21,10 @@ function ChromeTorrent( log ) {
 	};
 	
 	var hasStorageChanged = function() {
-		return localStorage["host"] !== host || localStorage["user"] !== username || localStorage["pass"] !== password;
+		var reset = localStorage["reset"] !== undefined;
+		if(reset)
+			localStorage["reset"]=undefined;
+		return reset || localStorage["host"] !== host || localStorage["user"] !== username || localStorage["pass"] !== password;
 	};
 
 	var refetchStorage = function() {
@@ -61,13 +64,16 @@ function ChromeTorrent( log ) {
 
 	this.addTorrent = function(torrentUrl) {
 		if( !hasStorageChanged() ) {
-			// quick way
-			postTorrent(torrentUrl);
-		} else {
-			//slow way, redo token thing
-			refetchStorage();
-			resetToken( function(){ postTorrent(torrentUrl) } );
+			// wrap in try block, if posting fails it could be because of a bad token, allow one retry
+			try {
+				postTorrent(torrentUrl);
+				return;
+			}
 		}
+
+		//slow way, redo token thing
+		refetchStorage();
+		resetToken( function(){ postTorrent(torrentUrl) } );
 	};
 }
 

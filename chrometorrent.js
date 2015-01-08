@@ -3,42 +3,74 @@ function ChromeTorrent( log ) {
 // Fields
 	var self = this;
 	var host = "";
+	var host2 = "";
 	var username = "";
 	var password = "";
 	var token = "";
 
 // Private methods
-	var resetToken = function( callback ) {
+
+	var resetForHost = function( hoststr, callback, errorcallback )
+	{
 		$.ajax( {
-			url:      host + "token.html",
-			success:  function(data) { token = $(data).first().first().html(); if( callback !== undefined ) callback(); },
+			url:      hoststr + "token.html",
+			success:  callback,
 			username: username,
 			password: password,
-			error: function( xhr,status,e){
-				log.addError("when fetching api token. encountered " +status+e);
-			}
+			error: errorcallback
 		});
+	};
+	var resetToken = function( callback ) {
+		var handlecallback = function(data) {
+			token = $(data).first().first().html();
+			if( callback !== undefined )
+				callback();
+		};
+		var errcallb = function( xhr,status,e){
+				log.addError("when fetching api token. encountered " +status+e);
+		};
+		
+		resetForHost( host, handlecallback, function(xhr,status,e){ resetForHost( host2, handlecallback, errcallb );});
 	};
 	
 	var hasStorageChanged = function() {
 		var reset = localStorage["reset"] !== undefined;
 		if(reset)
 			localStorage["reset"]=undefined;
-		return reset || localStorage["host"] !== host || localStorage["user"] !== username || localStorage["pass"] !== password;
+		return reset || localStorage["host"] !== host || localStorage["host2"] !== host2 || localStorage["user"] !== username || localStorage["pass"] !== password;
 	};
 
 	var refetchStorage = function() {
 		host = localStorage["host"];
+		host2 = localStorage["host2"];
 		username = localStorage["user"];
 		password = localStorage["pass"];
 	};
 	
-	var postTorrent = function(torrent) {
+	var postTorrent = function(torrent,fresh) {
+		var primaryUrl = self.createDownloadUrlForTorrent(self.getHost(),torrent);
+		var secondaryUrl = self.createDownloadUrlForTorrent(self.getHost2(),torrent);
 		$.ajax( {
-			url:      self.createDownloadUrlForTorrent(torrent),
+			url:      primaryUrl,
 			username: self.getUser(),
 			password: self.getPassword(),
-			error: function(xhr,status,e){ log.addError("when posting torrent. encountered "+status+e);},
+			error: function(xhr,status,e){ 
+				$.ajax( {
+					url:      secondaryUrl,
+					username: self.getUser(),
+					password: self.getPassword(),
+					error: function(xhr,status,e){ 
+						if( fresh )
+							log.addError("when posting torrent. encountered "+status+e);
+						else
+						{
+							refetchStorage();
+							resetToken( function(){ postTorrent(torrentUrl,true) } );
+						}
+					},
+					success: function(){}
+				});
+			},
 			success: function(){}
 		});
 
@@ -51,6 +83,9 @@ function ChromeTorrent( log ) {
 	this.getHost= function() {
 					return host;
 	};
+	this.getHost2 = function() {
+					return host2;
+	};
 	this.getPassword= function() {
 					return password;
 	};
@@ -58,22 +93,19 @@ function ChromeTorrent( log ) {
 					return token;
 	};
 	
-	this.createDownloadUrlForTorrent =  function (url) {
-		return self.getHost() + "?token=" + self.getToken() + "&action=add-url&s=" + escape(url);
+	this.createDownloadUrlForTorrent =  function (host,url) {
+		return host + "?token=" + self.getToken() + "&action=add-url&s=" + escape(url);
 	};
 
 	this.addTorrent = function(torrentUrl) {
 		if( !hasStorageChanged() ) {
-			// wrap in try block, if posting fails it could be because of a bad token, allow one retry
-			try {
-				postTorrent(torrentUrl);
-				return;
-			}
+			postTorrent(torrentUrl);
+			return;
 		}
 
 		//slow way, redo token thing
 		refetchStorage();
-		resetToken( function(){ postTorrent(torrentUrl) } );
+		resetToken( function(){ postTorrent(torrentUrl,true) } );
 	};
 }
 
@@ -132,7 +164,5 @@ function download(info, tab) {
   }
 
   var title = "Send to uTorrent";
-  var id = chrome.contextMenus.create({"title": title, "contexts":["link"],
-                                       "onclick": download});
-
-
+  var id = chrome.contextMenus.create({"title": title, "contexts":["link"], "onclick": download});
+  

@@ -25,14 +25,17 @@ function clear_log() {
 // Saves options to localStorage.
 function save_options() {
   var host = document.getElementById("host").value;
+  var host2 = document.getElementById("host2").value;
   var user = document.getElementById("user").value;
   var pass = document.getElementById("password").value;
   
   //ensure trailing slash
   if( host.charAt( host.length - 1 ) !== "/" )
 	host = host + "/";
-
+  if( host2.charAt( host2.length - 1 ) !== "/" )
+	host2 = host2 + "/";
   localStorage["host"] = host;
+  localStorage["host2"] = host2;
   localStorage["user"] = user;
   localStorage["pass"] = pass;
   
@@ -44,10 +47,12 @@ function save_options() {
 // Restores select box state to saved value from localStorage.
 function restore_options() {
   var host = localStorage["host"];
+  var host2 = localStorage["host2"] || "";
   var user = localStorage["user"];
   var pass = localStorage["pass"];
   
   document.getElementById("host").value = host;
+  document.getElementById("host2").value = host2;
   document.getElementById("user").value = user;
   document.getElementById("password").value = pass;
 }

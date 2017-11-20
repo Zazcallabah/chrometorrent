@@ -1,6 +1,7 @@
 {
   "name": "ChromeTorrent",
   "description": "Adds a context menu option for downloading a torrent file with utorrent linux server",
+  "homepage_url": "https://github.com/Zazcallabah/chrometorrent/tree/firefox",
   "manifest_version": 2,
   "version": "0.3",
   "icons": {

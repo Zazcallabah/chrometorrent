@@ -3,27 +3,51 @@
 	<head>
 		<meta charset="utf-8">
 		<title>ChromeTorrent - options</title>
+		<style>
+			form div + div { margin-top: .5em; }
+			label {
+			  display: inline-block;
+			  width: 90px;
+			  text-align: right;
+			}
+			input {
+			  width: 500px;
+			  box-sizing: border-box;
+			}
+			.button { padding-left: 90px; }
+			button { margin-left: .5em; }
+		</style>
 	</head>
 	<body>
 		<form id="settings">
-			<label>Host</label>
-			<input type="text" id="host" placeholder="http://localhost:8080" width="300px"/><br>
-			<label>Alt host</label>
-			<input type="text" id="host2" width="300px"/><br>
-			<label>Username</label>
-			<input type="text" id="username"/><br>
-			<label>Password</label>
-			<input type="password" id="password"/><br>
-
-
-			<button type="submit">Save</button>
+			<div>
+				<label for="host">Host</label>
+				<input type="text" id="host" name="host" placeholder="http://localhost:8080" />
+			</div>
+			<div>
+				<label for="host">Alt host</label>
+				<input type="text" id="host2" name="host2" /><br>
+			</div>
+			<div>
+				<label for="username">Username</label>
+				<input type="text" id="username" name="username" /><br>
+			</div>
+			<div>
+				<label for="password">Password</label>
+				<input type="password" id="password" name="password" /><br>
+			</div>
+			<div class="button">
+				<button type="submit">Save</button>
+			</div>
+			<div class="button">
+				<button id="refresh_log">Refresh log</button>
+			</div>
+			<div class="button">
+				<button id="clear_log">Clear log</button>
+			</div>
 		</form>
 		<div id="status"></div>
-		<form>
-		<input type="button" id="refresh_log" value="Refresh log" />
-		<input type="button" id="clear_log" value="Clear log" />
 		<div id="log"></div>
-		</form>
 		<script src="options.js"></script>
 	</body>
 </html>

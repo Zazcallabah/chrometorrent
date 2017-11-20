@@ -1,120 +1,45 @@
-function ChromeTorrent( log ) {
 
-// Fields
-	var self = this;
-	var host = "";
-	var host2 = "";
-	var username = "";
-	var password = "";
-	var token = "";
-
-// Private methods
-
-	var resetForHost = function( hoststr, callback, errorcallback )
-	{
-		$.ajax( {
-			url:      hoststr + "token.html",
-			success:  callback,
-			username: username,
-			password: password,
-			error: errorcallback
-		});
-	};
-	var resetToken = function( callback ) {
-		var handlecallback = function(data) {
-			token = $(data).first().first().html();
-			if( callback !== undefined )
-				callback();
-		};
-		var errcallb = function( xhr,status,e){
-				log.addError("when fetching api token. encountered " +status+e);
-		};
-		
-		resetForHost( host, handlecallback, function(xhr,status,e){ resetForHost( host2, handlecallback, errcallb );});
-	};
-	
-	var hasStorageChanged = function() {
-		var reset = localStorage["reset"] !== undefined;
-		if(reset)
-			localStorage["reset"]=undefined;
-		return reset || localStorage["host"] !== host || localStorage["host2"] !== host2 || localStorage["user"] !== username || localStorage["pass"] !== password;
-	};
-
-	var refetchStorage = function() {
-		host = localStorage["host"];
-		host2 = localStorage["host2"];
-		username = localStorage["user"];
-		password = localStorage["pass"];
-	};
-	
-	var postTorrent = function(torrent,fresh) {
-		var primaryUrl = self.createDownloadUrlForTorrent(self.getHost(),torrent);
-		var secondaryUrl = self.createDownloadUrlForTorrent(self.getHost2(),torrent);
-		$.ajax( {
-			url:      primaryUrl,
-			username: self.getUser(),
-			password: self.getPassword(),
-			error: function(xhr,status,e){ 
-				$.ajax( {
-					url:      secondaryUrl,
-					username: self.getUser(),
-					password: self.getPassword(),
-					error: function(xhr,status,e){ 
-						if( fresh )
-							log.addError("when posting torrent. encountered "+status+e);
-						else
-						{
-							refetchStorage();
-							resetToken( function(){ postTorrent(torrentUrl,true) } );
-						}
-					},
-					success: function(){}
-				});
-			},
-			success: function(){}
-		});
-
-	};
-
-// Public methods
-	this.getUser = function() {
-					return username;
-	};
-	this.getHost= function() {
-					return host;
-	};
-	this.getHost2 = function() {
-					return host2;
-	};
-	this.getPassword= function() {
-					return password;
-	};
-	this.getToken = function() {
-					return token;
-	};
-	
-	this.createDownloadUrlForTorrent =  function (host,url) {
-		return host + "?token=" + self.getToken() + "&action=add-url&s=" + escape(url);
-	};
-
-	this.addTorrent = function(torrentUrl) {
-		if( !hasStorageChanged() ) {
-			postTorrent(torrentUrl);
-			return;
+function ajax(url, verb, user, pass, callback)
+{
+	var httpRequest = new XMLHttpRequest();
+	function handleResponse() {
+		if (httpRequest.readyState === XMLHttpRequest.DONE) {
+			if (httpRequest.status === 200) {
+				if(callback)
+					callback(httpRequest.responseText);
+			} else {
+				console.error(httpRequest)
+			}
 		}
+	}
 
-		//slow way, redo token thing
-		refetchStorage();
-		resetToken( function(){ postTorrent(torrentUrl,true) } );
-	};
+	httpRequest.onreadystatechange = handleResponse;
+	httpRequest.open(verb,url);
+	if( user && pass )
+		httpRequest.setRequestHeader("Authorization", "Basic " + btoa(user+":"+pass));
+	httpRequest.send();
+}
+
+function extractToken(str)
+{
+	var r = /<html><div[^>]*>([^<]+)/
+	var result = r.exec(str);
+	if( result && result.length > 1 )
+		return result[1];
+	return null;
+}
+
+function createDownloadUrlForTorrent(url,host,token) {
+	return host + "/gui/?token=" + token + "&action=add-url&s=" + escape(url);
+};
+
+function send(url,host,token){
+	var href = createDownloadUrlForTorrent(url,host,token);
+	ajax(href,"GET");
 }
 
 function makeLog() {
 	var maxEntries = 100;
-	var loglabel = "logdata";
-	var saveLog = function( log ){
-		localStorage[loglabel] = JSON.stringify(log);
-	};
 
 	var getTime= function(){
 		var t = new Date();
@@ -135,21 +60,18 @@ function makeLog() {
 			this.add(getTime() + " ERROR: "+row);
 		},
 		add: function( row ) {
-			var log = this.get();
-			log[log.length] = row;
-			saveLog( ensureNotExceedingMax( log ) );
-		},
-		get: function() {
-			var storedlog = localStorage[loglabel];
-			if( storedlog === undefined || storedlog === null || storedlog === "" )
-				return [];
-			return JSON.parse( storedlog )
+			browser.storage.local.get("log").then(function(result){
+				var log = [];
+				if( result && result.log && result.log != "" )
+					log=result.log;
+				log[log.length] = row;
+				browser.storage.local.set({ log: ensureNotExceedingMax( log ) });
+			},function(error){console.log(error)});
 		}
 	};
 };
 
 var myLog = makeLog();
-var myTorrent = new ChromeTorrent( myLog );
 
 function linkify( url ) {
 	return "<a href=\""+url+"\">"+url+"</a>";
@@ -157,12 +79,32 @@ function linkify( url ) {
 
 function download(info, tab) {
 
-  myTorrent.addTorrent(info.linkUrl);
-  console.log("item " + info.linkUrl + " was clicked");
-  myLog.addInfo( "clicked: " + linkify(info.linkUrl) );
+	
+	console.log("item " + info.linkUrl + " was clicked");
+	
+	browser.storage.local.get(["host","host2","username","password"]).then(function(result){
+		ajax(result.host+"/gui/token.html","GET",result.username,result.password,function(data){
+			var token = extractToken(data);
+			if( token )
+			{
+				send( info.linkUrl, result.host, token );
+			}
+			else
+			{
+				ajax(result.host2+"/gui/token.html","GET",result.username,result.password,function(data){
+					var token = extractToken(data);
+					if( token )
+					{
+						send( info.linkUrl, result.host2, token );
+					}
+					else console.error("no valid host");
+				});
+			}
+		});
+	});
+	myLog.addInfo( "clicked: " + linkify(info.linkUrl) );
 
-  }
+}
 
-  var title = "Send to uTorrent";
-  var id = chrome.contextMenus.create({"title": title, "contexts":["link"], "onclick": download});
-  
+var title = "Send to uTorrent";
+var id = chrome.contextMenus.create({"title": title, "contexts":["link"], "onclick": download});

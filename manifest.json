@@ -2,13 +2,16 @@
   "name": "ChromeTorrent",
   "description": "Adds a context menu option for downloading a torrent file with utorrent linux server",
   "manifest_version": 2,
-  "version": "0.2",
+  "version": "0.3",
   "icons": {
     "16": "chrometorrent16.png",
     "48": "chrometorrent48.png",
     "128": "chrometorrent128.png"
   },
-  "permissions": ["contextMenus", "http://*/", "https://*/"],
-  "background": {"page": "background.html"},
-  "options_page": "options.html"
+  "permissions": ["contextMenus", "http://*/", "https://*/", "storage"],
+  "background": {"scripts": ["chrometorrent.js"]},
+  "options_ui": {
+    "browser_style": true,
+    "page": "options.html"
+  }
 }

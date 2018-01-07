@@ -1,5 +1,6 @@
 ## Install instructions
 
+### Chrome
 
 Because chrome doesnt allow self published extensions without displaying a nagbox.
 
@@ -9,3 +10,6 @@ Because chrome doesnt allow self published extensions without displaying a nagbo
 4. Add the following id to the white list in the options: `ilnijhbknbbiopiidgajkbnipdgpilbb`
 5. Drag the chrometorrent.crx file found in this repo to the chrome extensions settings page.
 
+### Firefox
+
+[ChromeTorrent on addons.mozilla.org](https://addons.mozilla.org/en-US/firefox/addon/chrometorrent/)

@@ -8,6 +8,7 @@ function ajax(url, verb, user, pass, callback)
 				if(callback)
 					callback(httpRequest.responseText);
 			} else {
+				myLog.addError(httpRequest.status);
 				console.error(httpRequest)
 			}
 		}
@@ -33,9 +34,9 @@ function createDownloadUrlForTorrent(url,host,token) {
 	return host + "/gui/?token=" + token + "&action=add-url&s=" + escape(url);
 };
 
-function send(url,host,token){
+function send(url,host,token,username,password){
 	var href = createDownloadUrlForTorrent(url,host,token);
-	ajax(href,"GET");
+	ajax(href,"GET",username,password);
 }
 
 function makeLog() {
@@ -79,7 +80,7 @@ function linkify( url ) {
 
 function download(info, tab) {
 
-	
+
 	console.log("item " + info.linkUrl + " was clicked");
 	
 	browser.storage.local.get(["host","host2","username","password"]).then(function(result){
@@ -87,7 +88,7 @@ function download(info, tab) {
 			var token = extractToken(data);
 			if( token )
 			{
-				send( info.linkUrl, result.host, token );
+				send( info.linkUrl, result.host, token, result.username, result.password );
 			}
 			else
 			{
@@ -95,7 +96,7 @@ function download(info, tab) {
 					var token = extractToken(data);
 					if( token )
 					{
-						send( info.linkUrl, result.host2, token );
+						send( info.linkUrl, result.host2, token, result.username, result.password );
 					}
 					else console.error("no valid host");
 				});

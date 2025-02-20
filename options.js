@@ -35,7 +35,9 @@ function refresh_log() {
 			if( log !== undefined ){
 				for( var label in log ){
 					if( log.hasOwnProperty(label) ) {
-						logdiv.innerHTML += "<p>"+log[label]+"</p>";
+						const p = document.createElement("p");
+						p.innerText = log[label];
+						logdiv.appendChild(p);
 					}
 				}
 			}

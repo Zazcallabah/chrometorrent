@@ -1,111 +1,87 @@
-
-function ajax(url, verb, user, pass, callback)
-{
-	var httpRequest = new XMLHttpRequest();
-	function handleResponse() {
-		if (httpRequest.readyState === XMLHttpRequest.DONE) {
-			if (httpRequest.status === 200) {
-				if(callback)
-					callback(httpRequest.responseText);
-			} else {
-				myLog.addError(httpRequest.status);
-				console.error(httpRequest)
-			}
-		}
-	}
-
-	httpRequest.onreadystatechange = handleResponse;
-	httpRequest.open(verb,url);
-	if( user && pass )
-		httpRequest.setRequestHeader("Authorization", "Basic " + btoa(user+":"+pass));
-	httpRequest.send();
-}
-
-function extractToken(str)
-{
-	var r = /<html><div[^>]*>([^<]+)/
-	var result = r.exec(str);
-	if( result && result.length > 1 )
-		return result[1];
-	return null;
-}
-
-function createDownloadUrlForTorrent(url,host,token) {
-	return host + "/gui/?token=" + token + "&action=add-url&s=" + escape(url);
-};
-
-function send(url,host,token,username,password){
-	var href = createDownloadUrlForTorrent(url,host,token);
-	ajax(href,"GET",username,password);
-}
-
 function makeLog() {
-	var maxEntries = 100;
+  var maxEntries = 100;
 
-	var getTime= function(){
-		var t = new Date();
-		return t.toISOString()
-	};
+  var getTime = function () {
+    var t = new Date();
+    return t.toISOString();
+  };
 
-	var ensureNotExceedingMax = function( log ){
-		if( log.length > maxEntries ) {
-			log.splice(0,log.length - maxEntries);
-		}
-		return log;
-	};
-	return {
-		addInfo: function( row ){
-			this.add( getTime() + " INFO: "+row );
-		},
-		addError: function(row){
-			this.add(getTime() + " ERROR: "+row);
-		},
-		add: function( row ) {
-			browser.storage.local.get("log").then(function(result){
-				var log = [];
-				if( result && result.log && result.log != "" )
-					log=result.log;
-				log[log.length] = row;
-				browser.storage.local.set({ log: ensureNotExceedingMax( log ) });
-			},function(error){console.log(error)});
-		}
-	};
-};
+  var ensureNotExceedingMax = function (log) {
+    if (log.length > maxEntries) {
+      log.splice(0, log.length - maxEntries);
+    }
+    return log;
+  };
+  return {
+    addInfo: function (row) {
+      this.add(getTime() + " INFO: " + row);
+    },
+    addError: function (row) {
+      this.add(getTime() + " ERROR: " + row);
+    },
+    add: function (row) {
+      browser.storage.local.get("log").then(
+        function (result) {
+          var log = [];
+          if (result && result.log && result.log != "") log = result.log;
+          log[log.length] = row;
+          browser.storage.local.set({ log: ensureNotExceedingMax(log) });
+        },
+        function (error) {
+          console.log(error);
+        }
+      );
+    },
+  };
+}
 
 var myLog = makeLog();
 
-function linkify( url ) {
-	return "<a href=\""+url+"\">"+url+"</a>";
+const urlEndpoint = (host, endpoint) => {
+  return `${host.trimEnd("/")}/${endpoint}`;
 };
 
-function download(info, tab) {
+const qbitDownload = async (url, host, user, pass) => {
+  const headers = new Headers();
+  headers.append("Content-Type", "application/x-www-form-urlencoded");
+  headers.append("Authorization", "Basic " + btoa(user + ":" + pass));
+  const data = new FormData();
+  data.append("urls", url);
+  const result = await fetch(urlEndpoint(host, "api/v2/torrents/add"), {
+    credentials: "include",
+    method: "POST",
+    headers,
+    body: new URLSearchParams(data),
+    referrer: host,
+  });
+  return result.ok;
+};
 
+const linkify = (url) => {
+  return '<a href="' + url + '">' + url + "</a>";
+};
 
-	console.log("item " + info.linkUrl + " was clicked");
-	
-	browser.storage.local.get(["host","host2","username","password"]).then(function(result){
-		ajax(result.host+"/gui/token.html","GET",result.username,result.password,function(data){
-			var token = extractToken(data);
-			if( token )
-			{
-				send( info.linkUrl, result.host, token, result.username, result.password );
-			}
-			else
-			{
-				ajax(result.host2+"/gui/token.html","GET",result.username,result.password,function(data){
-					var token = extractToken(data);
-					if( token )
-					{
-						send( info.linkUrl, result.host2, token, result.username, result.password );
-					}
-					else console.error("no valid host");
-				});
-			}
-		});
-	});
-	myLog.addInfo( "clicked: " + linkify(info.linkUrl) );
+const download = async (info, tab) => {
+  console.log("item " + info.linkUrl + " was clicked");
+  const result = await browser.storage.local.get([
+    "host",
+    "username",
+    "password",
+  ]);
+  const success = await qbitDownload(
+    info.linkUrl,
+    result.host,
+    result.username,
+    result.password
+  );
+  myLog.addInfo(
+    `clicked: ${linkify(info.linkUrl)} (${success ? "ok" : "fail"})`
+  );
+};
 
-}
-
-var title = "Send to uTorrent";
-var id = chrome.contextMenus.create({"title": title, "contexts":["link"], "onclick": download});
+const title = "Send to uTorrent";
+const id = chrome.contextMenus.create({
+  title: title,
+  contexts: ["link"],
+  onclick: download,
+});

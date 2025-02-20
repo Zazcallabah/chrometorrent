@@ -13,3 +13,13 @@ Because chrome doesnt allow self published extensions without displaying a nagbo
 ### Firefox
 
 [ChromeTorrent on addons.mozilla.org](https://addons.mozilla.org/en-US/firefox/addon/chrometorrent/)
+
+
+## Server
+You need to provide your own server. Enter server details into the options page of the extension.
+Server api must accept basic auth. For qbt-nox this means you will have to reverse proxy the original api, and use whitelist to allow the reverse proxy through.
+
+
+## version history
+
+0.6 - switch from utorrent-based api to qbittorrent-nox-based api

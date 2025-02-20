@@ -3,18 +3,16 @@ function saveOptions(e) {
 	e.preventDefault();
 	browser.storage.local.set({
 		host: document.querySelector("#host").value,
-		host2: document.querySelector("#host2").value,
 		username: document.querySelector("#username").value,
-		password: document.querySelector("#password").value
+		password: document.querySelector("#password").value,
 	});
 }
 
 function restoreOptions() {
 	browser.storage.local.
-		get(["host","host2","username","password"]).
+		get(["host","username","password"]).
 		then(function(result){
 			document.querySelector("#host").value = result.host || "";
-			document.querySelector("#host2").value = result.host2 || "";
 			document.querySelector("#username").value = result.username || "";
 			document.querySelector("#password").value = result.password || "";
 		}, function onError(error) {
